@@ -1,186 +1,83 @@
 buildscript {
     repositories {
-        mavenCentral()
-        maven {
-            name = "forge"
-            url = "http://files.minecraftforge.net/maven"
-        }
+        jcenter()
+        maven { url = "http://files.minecraftforge.net/maven" }
     }
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:2.2-SNAPSHOT'
+        classpath fileTree(dir: 'libs', include: '*.jar')
     }
-}
-plugins {
-    id "com.matthewprenger.cursegradle" version "1.0.7"
-    id "se.bjurr.gitchangelog.git-changelog-gradle-plugin" version "1.32"
 }
 apply plugin: 'net.minecraftforge.gradle.forge'
-apply plugin: 'maven'
-apply plugin: 'eclipse'
-apply plugin: 'idea'
+//Only edit below this line, the above code adds and enables the necessary things for Forge to be setup.
 
-def versionInfo = getGitVersion()
-version = "${versionInfo['simpleretrogen.version']}"
-group= "cpw.mods" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = "simpleretrogen"
+
+version = "0.5.0"
+group = "com.headlamp-games.railcraft.retrogen" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
+
+sourceCompatibility = targetCompatibility = "1.8" // Need this here so eclipse task generates correctly.
+compileJava {
+    sourceCompatibility = targetCompatibility = "1.8"
+}
 
 minecraft {
-    version = "1.10-12.18.0.1984-1.10.0"
-    mappings = "snapshot_20160529"
+    version = "1.10.2-12.18.3.2281"
     runDir = "run"
-}
-curseforge {
-    apiKey = project.hasProperty('curseforge_apikey') ? project.curseforge_apikey : '0'
-    project {
-        id = '240566'
-        changelog = file('CHANGELOG.html')
-        changelogType = 'html'
-        releaseType = 'beta'
-    }
-}
 
-afterEvaluate {
-    tasks.curseforge240566.dependsOn.remove(reobfJar)
-    tasks.curseforge240566.dependsOn.remove(jar)
-    tasks.curseforge240566.dependsOn.add(makeChangelog)
+    // the mappings can be changed at any time, and must be in the following format.
+    // snapshot_YYYYMMDD   snapshot are built nightly.
+    // stable_#            stables are built at the discretion of the MCP team.
+    // Use non-default mappings at your own risk. they may not always work.
+    // simply re-run your setup task after changing the mappings to update your workspace.
+    mappings = "snapshot_20161111"
+    replace '@VERSION@', project.version
+    makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
 }
 
-task makeChangelog(type: se.bjurr.gitchangelog.plugin.gradle.GitChangelogTask) {
-    filePath = "CHANGELOG.html"
-    untaggedName = "Current release ${project.version}"
-//    gitHubApi = "https://api.github.com/repos/cpw/simpleretrogen"
-    templateContent = """
-<h1>Simpleretrogen changelog history</h1>
-<h2>Version ${project.version} for minecraft ${project.minecraft.version}</h2>
-<ul>
-{{#tags}}
-<li><h3>{{name}}</h3>
-<hr/>
-<ul>
-{{#commits}}
-<li>{{{message}}}</li>
-{{/commits}}
-</ul>
-{{/tags}}
-</ul>
-    """
-}
+archivesBaseName = "IroncladGameplayTweaks_" + project.minecraft.version
 
+dependencies {
+    // you may put jars on which you depend on in ./libs
+    // or you may define them like so..
+    //compile "some.group:artifact:version:classifier"
+    //compile "some.group:artifact:version"
 
-jar {
-    appendix = project.minecraft.version
+    // real examples
+    //compile 'com.mod-buildcraft:buildcraft:6.0.8:dev'  // adds buildcraft to the dev env
+    //compile 'com.googlecode.efficient-java-matrix-library:ejml:0.24' // adds ejml to the dev env
+
+    // the 'provided' configuration is for optional dependencies that exist at compile-time but might not at runtime.
+    //provided 'com.mod-buildcraft:buildcraft:6.0.8:dev'
+
+    // the deobf configurations:  'deobfCompile' and 'deobfProvided' are the same as the normal compile and provided,
+    // except that these dependencies get remapped to your current MCP mappings
+    //deobfCompile 'com.mod-buildcraft:buildcraft:6.0.8:dev'
+    //deobfProvided 'com.mod-buildcraft:buildcraft:6.0.8:dev'
+
+    // for more info...
+    // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
+    // http://www.gradle.org/docs/current/userguide/dependency_management.html
+
 }
 
 processResources
-{
-    // replace stuff in mcmod.info, nothing else
-    from(sourceSets.main.resources.srcDirs) {
-        include 'mcmod.info'
-                
-        // replace version and mcversion
-        expand 'version':project.version, 'mcversion':project.minecraft.version
-    }
-        
-    // copy everything else, thats not the mcmod.info
-    from(sourceSets.main.resources.srcDirs) {
-        exclude 'mcmod.info'
-    }
-    doLast {
-        def propsFile = new File(destinationDir, 'version.properties')
-        def properties = new Properties()
-        properties.putAll(versionInfo)
-        properties['simpleretrogen.build.mcversion'] = project.minecraft.version
-        properties.store(propsFile.newWriter(), null)
-    }
-}
-
-
-uploadArchives {
-    repositories.mavenDeployer {
-        dependsOn 'build'
-
-        if (project.hasProperty('forgeMavenPassword'))
         {
-            repository(url: "http://files.minecraftforge.net/maven/manage/upload") {
-                authentication(userName: project.getProperty('forgeMavenUser'), password: project.getProperty('forgeMavenPassword')) // the elvis operator. look it up.
+            // this will ensure that this task is redone when the versions change.
+            inputs.property "version", project.version
+            inputs.property "mcversion", project.minecraft.version
+
+            // replace stuff in mcmod.info, nothing else
+            from(sourceSets.main.resources.srcDirs) {
+                include 'mcmod.info'
+
+                // replace version and mcversion
+                expand 'version': project.version, 'mcversion': project.minecraft.version
+            }
+
+            // copy everything else, thats not the mcmod.info
+            from(sourceSets.main.resources.srcDirs) {
+                exclude 'mcmod.info'
+                exclude '**/*.md'
+                exclude '**/Thumbs.db'
             }
         }
-        else
-        {
-            // local repo folder. Might wanna juset use  gradle install   if you wanans end it to maven-local
-            repository(url: 'file://localhost/' + project.file('repo').getAbsolutePath())
-        }
-        // This is just the pom data for the maven repo
-        pom {
-            groupId = project.group
-            // Force the maven upload to use the <mcversion>-<version> syntax preferred at files
-            version = "${project.minecraft.version}-${project.version}"
-            artifactId = project.archivesBaseName
-            project {
-                name project.archivesBaseName
-                packaging 'jar'
-                description 'simpleretrogen'
-                url 'https://github.com/cpw/simpleretrogen'
-
-                scm {
-                    url 'https://github.com/cpw/simpleretrogen'
-                    connection 'scm:git:git://github.com/cpw/simpleretrogen.git'
-                    developerConnection 'scm:git:git@github.com:cpw/simpleretrogen.git'
-                }
-
-                issueManagement {
-                    system 'github'
-                    url 'https://github.com/cpw/simpleretrogen/issues'
-                }
-
-                licenses {
-                    license {
-                        name 'GNU Public License (GPL), Version 3.0'
-                        url 'http://www.gnu.org/licenses/gpl-3.0.txt'
-                        distribution 'repo'
-                    }
-                }
-
-                developers {
-                    developer {
-                        id 'cpw'
-                        name 'cpw'
-                        roles { role 'developer' }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// This is a special task for pulling the version information from git and the environment (for BUILD_NUMBER)
-def getGitVersion()
-{
-    def out = [:]
-
-    // call git command.
-    def outStream = new ByteArrayOutputStream()
-    def result = exec {
-        executable = 'git'
-        args = [ 'describe', '--long', "--match=[^(jenkins)]*"]
-        standardOutput = outStream
-    }
-
-    def fullVersion = outStream.toString().trim()
-    def matcher = fullVersion =~ /(\d+).(\d+)-(\d+)-(.*)/
-
-    def maj = matcher[0][1]
-    def min = matcher[0][2]
-    def rev = matcher[0][3]
-    def bn = project.ext.properties.buildNumber ?: System.getenv("PROMOTED_NUMBER") ?: System.getenv("BUILD_NUMBER") ?: "1"
-
-    out['simpleretrogen.build.major.number'] = maj.toString()
-    out['simpleretrogen.build.minor.number'] = min.toString()
-    out['simpleretrogen.build.revision.number'] = rev.toString()
-    out['simpleretrogen.build.githash'] = matcher[0][4].toString()
-    out['simpleretrogen.build.number' ] = bn.toString()
-    out['simpleretrogen.version' ] = "${maj}.${min}.${rev}+${bn}".toString()
-
-    return out
-}
-
