@@ -34,7 +34,7 @@ minecraft {
     makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
 }
 
-archivesBaseName = "IroncladGameplayTweaks_" + project.minecraft.version
+archivesBaseName = "RailcraftRetrogen_" + project.minecraft.version
 
 dependencies {
     // you may put jars on which you depend on in ./libs
