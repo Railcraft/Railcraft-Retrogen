@@ -57,7 +57,13 @@ import java.util.concurrent.Semaphore;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
-@Mod(modid = "railcraftretrogen", name = "Railcraft Retrogen", acceptableRemoteVersions = "*", acceptedMinecraftVersions = "[1.9,1.11)")
+@Mod(
+        modid = "railcraftretrogen",
+        name = "Railcraft Retrogen",
+        acceptableRemoteVersions = "*",
+        acceptedMinecraftVersions = "[1.10.2,1.11)",
+        dependencies = "required-after:railcraft@[10.2.0-alpha-5,);"
+)
 @ParametersAreNonnullByDefault
 public class WorldRetrogenRailcraft {
     private Multimap<String, String> markers = HashMultimap.create();
