@@ -111,10 +111,10 @@ public class WorldRetrogenRailcraft {
                 {
 
                     boolean retrogenEnabled = ((BooleanSupplier) wg).getAsBoolean();
-                    String retrogenMarker = ((Supplier<String>) wg).get();
+                    String retrogenMarker = (String)((Supplier) wg).get();
                     ResourceLocation name = ((IForgeRegistryEntry) wg).getRegistryName();
 
-                    if (retrogenEnabled && !delegates.containsKey(name))
+                    if (retrogenEnabled && !delegates.containsKey(name.toString()))
                     {
                         FMLLog.info("Substituting worldgenerator %s with delegate", name);
                         iterator.remove();
@@ -295,12 +295,7 @@ public class WorldRetrogenRailcraft {
     {
         if (world instanceof WorldServer)
         {
-            ListMultimap<ChunkPos, String> currentWork = pendingWork.get(world);
-            if (currentWork == null)
-            {
-                currentWork = ArrayListMultimap.create();
-                pendingWork.put(world, currentWork);
-            }
+            ListMultimap<ChunkPos, String> currentWork = pendingWork.computeIfAbsent(world, k -> ArrayListMultimap.create());
 
             currentWork.put(chunkCoords, retro);
         }
@@ -316,12 +311,7 @@ public class WorldRetrogenRailcraft {
         getSemaphoreFor(world).acquireUninterruptibly();
         try
         {
-            ListMultimap<ChunkPos, String> completedMap = completedWork.get(world);
-            if (completedMap == null)
-            {
-                completedMap = ArrayListMultimap.create();
-                completedWork.put(world, completedMap);
-            }
+            ListMultimap<ChunkPos, String> completedMap = completedWork.computeIfAbsent(world, k -> ArrayListMultimap.create());
 
             completedMap.put(chunkCoords, retroClass);
         }
