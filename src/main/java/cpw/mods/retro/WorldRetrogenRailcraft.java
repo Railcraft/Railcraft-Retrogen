@@ -107,37 +107,39 @@ public class WorldRetrogenRailcraft {
 
         Set<IWorldGenerator> worldGens = ObfuscationReflectionHelper.getPrivateValue(GameRegistry.class, null, "worldGenerators");
         Map<IWorldGenerator,Integer> worldGenIdx = ObfuscationReflectionHelper.getPrivateValue(GameRegistry.class, null, "worldGeneratorIndex");
+        Set<IWorldGenerator> wrappers = new HashSet<>();
 
         for (Iterator<IWorldGenerator> iterator = worldGens.iterator(); iterator.hasNext(); )
         {
             IWorldGenerator wg = iterator.next();
-            if (wg.getClass().getSimpleName().equals("GeneratorRailcraftOre"))
+            if (wg.getClass().getSimpleName().equals("GeneratorRailcraftOre") &&
+                    wg instanceof BooleanSupplier &&
+                    wg instanceof Supplier &&
+                    wg instanceof IForgeRegistryEntry)
             {
-                if (wg instanceof BooleanSupplier && wg instanceof Supplier && wg instanceof IForgeRegistryEntry)
+                boolean retrogenEnabled = ((BooleanSupplier) wg).getAsBoolean();
+                String retrogenMarker = (String) ((Supplier) wg).get();
+                ResourceLocation name = ((IForgeRegistryEntry) wg).getRegistryName();
+
+                if (retrogenEnabled && !delegates.containsKey(name.toString()))
                 {
-
-                    boolean retrogenEnabled = ((BooleanSupplier) wg).getAsBoolean();
-                    String retrogenMarker = (String)((Supplier) wg).get();
-                    ResourceLocation name = ((IForgeRegistryEntry) wg).getRegistryName();
-
-                    if (retrogenEnabled && !delegates.containsKey(name.toString()))
-                    {
-                        FMLLog.info("Substituting worldgenerator %s with delegate", name);
-                        iterator.remove();
-                        TargetWorldWrapper tww = new TargetWorldWrapper();
-                        tww.delegate = wg;
-                        tww.tag = name.toString();
-                        worldGens.add(tww);
-                        Integer idx = worldGenIdx.remove(wg);
-                        worldGenIdx.put(tww, idx);
-                        FMLLog.info("Successfully substituted %s with delegate", name);
-                        delegates.put(name.toString(), tww);
-                        markers.put(retrogenMarker, name.toString());
-                        retros.put(name.toString(), retrogenMarker);
-                    }
+                    FMLLog.info("Substituting worldgenerator %s with delegate", name);
+                    iterator.remove();
+                    TargetWorldWrapper tww = new TargetWorldWrapper();
+                    tww.delegate = wg;
+                    tww.tag = name.toString();
+                    wrappers.add(tww);
+                    Integer idx = worldGenIdx.remove(wg);
+                    worldGenIdx.put(tww, idx);
+                    FMLLog.info("Successfully substituted %s with delegate", name);
+                    delegates.put(name.toString(), tww);
+                    markers.put(retrogenMarker, name.toString());
+                    retros.put(name.toString(), retrogenMarker);
                 }
             }
         }
+
+        worldGens.addAll(wrappers);
     }
 
     @EventHandler
