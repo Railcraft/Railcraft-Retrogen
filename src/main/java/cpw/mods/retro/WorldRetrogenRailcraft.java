@@ -62,7 +62,7 @@ import java.util.function.Supplier;
         name = "Railcraft Retrogen",
         acceptableRemoteVersions = "*",
         acceptedMinecraftVersions = "[1.10.2,1.11)",
-        dependencies = "required-after:railcraft@[10.2.0-alpha-5,);"
+        dependencies = "required-after:railcraft"
 )
 @ParametersAreNonnullByDefault
 public class WorldRetrogenRailcraft {
@@ -134,7 +134,6 @@ public class WorldRetrogenRailcraft {
                         delegates.put(name.toString(), tww);
                         markers.put(retrogenMarker, name.toString());
                         retros.put(name.toString(), retrogenMarker);
-                        break;
                     }
                 }
             }
