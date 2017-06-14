@@ -67,19 +67,18 @@ import java.util.function.Supplier;
 @ParametersAreNonnullByDefault
 public class WorldRetrogenRailcraft {
     private Multimap<String, String> markers = HashMultimap.create();
-    private Map<String,TargetWorldWrapper> delegates;
+    private Map<String, TargetWorldWrapper> delegates;
 
-    private Map<World,ListMultimap<ChunkPos,String>> pendingWork;
-    private Map<World,ListMultimap<ChunkPos,String>> completedWork;
+    private Map<World, ListMultimap<ChunkPos, String>> pendingWork;
+    private Map<World, ListMultimap<ChunkPos, String>> completedWork;
 
-    private ConcurrentMap<World,Semaphore> completedWorkLocks;
+    private ConcurrentMap<World, Semaphore> completedWorkLocks;
 
     private int maxPerTick;
-    private Map<String,String> retros = Maps.newHashMap();
+    private Map<String, String> retros = Maps.newHashMap();
 
     @EventHandler
-    public void preInit(FMLPreInitializationEvent evt)
-    {
+    public void preInit(FMLPreInitializationEvent evt) {
         Configuration cfg = new Configuration(evt.getSuggestedConfigurationFile(), null, true);
         cfg.load();
 
@@ -87,8 +86,7 @@ public class WorldRetrogenRailcraft {
         property.setComment("Maximum number of retrogens to run in a single tick");
         this.maxPerTick = property.getInt(100);
 
-        if (cfg.hasChanged())
-        {
+        if (cfg.hasChanged()) {
             cfg.save();
         }
 
@@ -98,31 +96,27 @@ public class WorldRetrogenRailcraft {
     }
 
     @EventHandler
-    public void serverAboutToStart(FMLServerAboutToStartEvent evt)
-    {
+    public void serverAboutToStart(FMLServerAboutToStartEvent evt) {
         this.pendingWork = new MapMaker().weakKeys().makeMap();
         this.completedWork = new MapMaker().weakKeys().makeMap();
         this.completedWorkLocks = new MapMaker().weakKeys().makeMap();
         this.markers.clear();
 
         Set<IWorldGenerator> worldGens = ObfuscationReflectionHelper.getPrivateValue(GameRegistry.class, null, "worldGenerators");
-        Map<IWorldGenerator,Integer> worldGenIdx = ObfuscationReflectionHelper.getPrivateValue(GameRegistry.class, null, "worldGeneratorIndex");
+        Map<IWorldGenerator, Integer> worldGenIdx = ObfuscationReflectionHelper.getPrivateValue(GameRegistry.class, null, "worldGeneratorIndex");
         Set<IWorldGenerator> wrappers = new HashSet<>();
 
-        for (Iterator<IWorldGenerator> iterator = worldGens.iterator(); iterator.hasNext(); )
-        {
+        for (Iterator<IWorldGenerator> iterator = worldGens.iterator(); iterator.hasNext(); ) {
             IWorldGenerator wg = iterator.next();
             if (wg.getClass().getSimpleName().equals("GeneratorRailcraftOre") &&
                     wg instanceof BooleanSupplier &&
                     wg instanceof Supplier &&
-                    wg instanceof IForgeRegistryEntry)
-            {
+                    wg instanceof IForgeRegistryEntry) {
                 boolean retrogenEnabled = ((BooleanSupplier) wg).getAsBoolean();
                 String retrogenMarker = (String) ((Supplier) wg).get();
                 ResourceLocation name = ((IForgeRegistryEntry) wg).getRegistryName();
 
-                if (retrogenEnabled && !delegates.containsKey(name.toString()))
-                {
+                if (retrogenEnabled && !delegates.containsKey(name.toString())) {
                     FMLLog.info("Substituting worldgenerator %s with delegate", name);
                     iterator.remove();
                     TargetWorldWrapper tww = new TargetWorldWrapper();
@@ -143,59 +137,49 @@ public class WorldRetrogenRailcraft {
     }
 
     @EventHandler
-    public void serverStopped(FMLServerStoppedEvent evt)
-    {
+    public void serverStopped(FMLServerStoppedEvent evt) {
         Set<IWorldGenerator> worldGens = ObfuscationReflectionHelper.getPrivateValue(GameRegistry.class, null, "worldGenerators");
-        Map<IWorldGenerator,Integer> worldGenIdx = ObfuscationReflectionHelper.getPrivateValue(GameRegistry.class, null, "worldGeneratorIndex");
+        Map<IWorldGenerator, Integer> worldGenIdx = ObfuscationReflectionHelper.getPrivateValue(GameRegistry.class, null, "worldGeneratorIndex");
 
-        for (TargetWorldWrapper tww : delegates.values())
-        {
+        for (TargetWorldWrapper tww : delegates.values()) {
             worldGens.remove(tww);
             Integer idx = worldGenIdx.remove(tww);
             worldGens.add(tww.delegate);
-            worldGenIdx.put(tww.delegate,idx);
+            worldGenIdx.put(tww.delegate, idx);
         }
 
         delegates.clear();
     }
 
-    private Semaphore getSemaphoreFor(World w)
-    {
+    private Semaphore getSemaphoreFor(World w) {
         completedWorkLocks.putIfAbsent(w, new Semaphore(1));
         return completedWorkLocks.get(w);
     }
 
     private class LastTick {
         private int counter = 0;
+
         @SubscribeEvent
-        public void tickStart(TickEvent.WorldTickEvent tick)
-        {
+        public void tickStart(TickEvent.WorldTickEvent tick) {
             World w = tick.world;
-            if (!(w instanceof WorldServer))
-            {
+            if (!(w instanceof WorldServer)) {
                 return;
             }
-            if (tick.phase == TickEvent.Phase.START)
-            {
+            if (tick.phase == TickEvent.Phase.START) {
                 counter = 0;
                 getSemaphoreFor(w);
-            }
-            else
-            {
+            } else {
                 ListMultimap<ChunkPos, String> pending = pendingWork.get(w);
-                if (pending == null)
-                {
+                if (pending == null) {
                     return;
                 }
                 ImmutableList<Entry<ChunkPos, String>> forProcessing = ImmutableList.copyOf(Iterables.limit(pending.entries(), maxPerTick + 1));
-                for (Entry<ChunkPos, String> entry : forProcessing)
-                {
-                    if (counter++ > maxPerTick)
-                    {
+                for (Entry<ChunkPos, String> entry : forProcessing) {
+                    if (counter++ > maxPerTick) {
                         FMLLog.fine("Completed %d retrogens this tick. There are %d left for world %s", counter, pending.size(), w.getWorldInfo().getWorldName());
                         return;
                     }
-                    runRetrogen((WorldServer)w, entry.getKey(), entry.getValue());
+                    runRetrogen((WorldServer) w, entry.getKey(), entry.getValue());
                 }
             }
         }
@@ -206,8 +190,7 @@ public class WorldRetrogenRailcraft {
         private String tag;
 
         @Override
-        public void generate(Random random, int chunkX, int chunkZ, World world, IChunkGenerator chunkGenerator, IChunkProvider chunkProvider)
-        {
+        public void generate(Random random, int chunkX, int chunkZ, World world, IChunkGenerator chunkGenerator, IChunkProvider chunkProvider) {
             FMLLog.fine("Passing generation for %s through to underlying generator", tag);
             delegate.generate(random, chunkX, chunkZ, world, chunkGenerator, chunkProvider);
             ChunkPos chunkCoordIntPair = new ChunkPos(chunkX, chunkZ);
@@ -216,11 +199,9 @@ public class WorldRetrogenRailcraft {
     }
 
     @SubscribeEvent
-    public void onChunkLoad(ChunkDataEvent.Load chunkevt)
-    {
+    public void onChunkLoad(ChunkDataEvent.Load chunkevt) {
         World w = chunkevt.getWorld();
-        if (!(w instanceof WorldServer))
-        {
+        if (!(w instanceof WorldServer)) {
             return;
         }
         getSemaphoreFor(w);
@@ -228,54 +209,44 @@ public class WorldRetrogenRailcraft {
         Chunk chk = chunkevt.getChunk();
         Set<String> existingGens = Sets.newHashSet();
         NBTTagCompound data = chunkevt.getData();
-        for (String m : markers.keySet())
-        {
+        for (String m : markers.keySet()) {
             NBTTagCompound marker = data.getCompoundTag(m);
             NBTTagList tagList = marker.getTagList("list", 8);
-            for (int i = 0; i < tagList.tagCount(); i++)
-            {
+            for (int i = 0; i < tagList.tagCount(); i++) {
                 existingGens.add(tagList.getStringTagAt(i));
             }
 
             SetView<String> difference = Sets.difference(new HashSet<>(markers.get(m)), existingGens);
-            for (String retro : difference)
-            {
-                if (retros.containsKey(retro))
-                {
+            for (String retro : difference) {
+                if (retros.containsKey(retro)) {
                     queueRetrogen(retro, w, chk.getChunkCoordIntPair());
                 }
             }
         }
 
-        for (String retro : existingGens)
-        {
+        for (String retro : existingGens) {
             completeRetrogen(chk.getChunkCoordIntPair(), w, retro);
         }
     }
 
     @SubscribeEvent
-    public void onChunkSave(ChunkDataEvent.Save chunkevt)
-    {
+    public void onChunkSave(ChunkDataEvent.Save chunkevt) {
         World w = chunkevt.getWorld();
-        if (!(w instanceof WorldServer))
-        {
+        if (!(w instanceof WorldServer)) {
             return;
         }
         getSemaphoreFor(w).acquireUninterruptibly();
-        try
-        {
-            if (completedWork.containsKey(w))
-            {
+        try {
+            if (completedWork.containsKey(w)) {
                 ListMultimap<ChunkPos, String> doneChunks = completedWork.get(w);
                 List<String> retroClassList = doneChunks.get(chunkevt.getChunk().getChunkCoordIntPair());
-                if (retroClassList.isEmpty())
+                if (retroClassList.isEmpty()) {
                     return;
+                }
                 NBTTagCompound data = chunkevt.getData();
-                for (String retroClass : retroClassList)
-                {
+                for (String retroClass : retroClassList) {
                     String marker = retros.get(retroClass);
-                    if (marker == null)
-                    {
+                    if (marker == null) {
                         FMLLog.log(Level.DEBUG, "Encountered retrogen class %s with no existing marker, removing from chunk. You probably removed it from the active configuration", retroClass);
                         continue;
                     }
@@ -291,45 +262,36 @@ public class WorldRetrogenRailcraft {
                     lst.appendTag(new NBTTagString(retroClass));
                 }
             }
-        }
-        finally
-        {
+        } finally {
             getSemaphoreFor(w).release();
         }
     }
 
-    private void queueRetrogen(String retro, World world, ChunkPos chunkCoords)
-    {
-        if (world instanceof WorldServer)
-        {
+    private void queueRetrogen(String retro, World world, ChunkPos chunkCoords) {
+        if (world instanceof WorldServer) {
             ListMultimap<ChunkPos, String> currentWork = pendingWork.computeIfAbsent(world, k -> ArrayListMultimap.create());
 
             currentWork.put(chunkCoords, retro);
         }
     }
-    private void completeRetrogen(ChunkPos chunkCoords, World world, String retroClass)
-    {
+
+    private void completeRetrogen(ChunkPos chunkCoords, World world, String retroClass) {
         ListMultimap<ChunkPos, String> pendingMap = pendingWork.get(world);
-        if (pendingMap != null && pendingMap.containsKey(chunkCoords))
-        {
+        if (pendingMap != null && pendingMap.containsKey(chunkCoords)) {
             pendingMap.remove(chunkCoords, retroClass);
         }
 
         getSemaphoreFor(world).acquireUninterruptibly();
-        try
-        {
+        try {
             ListMultimap<ChunkPos, String> completedMap = completedWork.computeIfAbsent(world, k -> ArrayListMultimap.create());
 
             completedMap.put(chunkCoords, retroClass);
-        }
-        finally
-        {
+        } finally {
             getSemaphoreFor(world).release();
         }
     }
 
-    private void runRetrogen(WorldServer world, ChunkPos chunkCoords, String retroClass)
-    {
+    private void runRetrogen(WorldServer world, ChunkPos chunkCoords, String retroClass) {
         long worldSeed = world.getSeed();
         Random fmlRandom = new Random(worldSeed);
         long xSeed = fmlRandom.nextLong() >> 2 + 1L;
