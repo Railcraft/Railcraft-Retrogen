@@ -219,13 +219,13 @@ public class WorldRetrogenRailcraft {
             SetView<String> difference = Sets.difference(new HashSet<>(markers.get(m)), existingGens);
             for (String retro : difference) {
                 if (retros.containsKey(retro)) {
-                    queueRetrogen(retro, w, chk.getChunkCoordIntPair());
+                    queueRetrogen(retro, w, chk.getPos());
                 }
             }
         }
 
         for (String retro : existingGens) {
-            completeRetrogen(chk.getChunkCoordIntPair(), w, retro);
+            completeRetrogen(chk.getPos(), w, retro);
         }
     }
 
@@ -239,7 +239,7 @@ public class WorldRetrogenRailcraft {
         try {
             if (completedWork.containsKey(w)) {
                 ListMultimap<ChunkPos, String> doneChunks = completedWork.get(w);
-                List<String> retroClassList = doneChunks.get(chunkevt.getChunk().getChunkCoordIntPair());
+                List<String> retroClassList = doneChunks.get(chunkevt.getChunk().getPos());
                 if (retroClassList.isEmpty()) {
                     return;
                 }
@@ -296,12 +296,12 @@ public class WorldRetrogenRailcraft {
         Random fmlRandom = new Random(worldSeed);
         long xSeed = fmlRandom.nextLong() >> 2 + 1L;
         long zSeed = fmlRandom.nextLong() >> 2 + 1L;
-        long chunkSeed = (xSeed * chunkCoords.chunkXPos + zSeed * chunkCoords.chunkZPos) ^ worldSeed;
+        long chunkSeed = (xSeed * chunkCoords.x + zSeed * chunkCoords.z) ^ worldSeed;
 
         fmlRandom.setSeed(chunkSeed);
         ChunkProviderServer providerServer = world.getChunkProvider();
         IChunkGenerator generator = ObfuscationReflectionHelper.getPrivateValue(ChunkProviderServer.class, providerServer, "field_186029_c", "chunkGenerator");
-        delegates.get(retroClass).delegate.generate(fmlRandom, chunkCoords.chunkXPos, chunkCoords.chunkZPos, world, generator, providerServer);
+        delegates.get(retroClass).delegate.generate(fmlRandom, chunkCoords.x, chunkCoords.z, world, generator, providerServer);
         FMLLog.fine("Retrogenerated chunk for %s", retroClass);
         completeRetrogen(chunkCoords, world, retroClass);
     }
