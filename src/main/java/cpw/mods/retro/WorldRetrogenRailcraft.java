@@ -28,9 +28,9 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.IChunkGenerator;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.gen.ChunkProviderServer;
+import net.minecraft.world.gen.IChunkGenerator;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
@@ -46,7 +46,7 @@ import net.minecraftforge.fml.common.event.FMLServerStoppedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.registry.GameRegistry;
-import net.minecraftforge.fml.common.registry.IForgeRegistryEntry;
+import net.minecraftforge.registries.IForgeRegistryEntry;
 import org.apache.logging.log4j.Level;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -61,7 +61,7 @@ import java.util.function.Supplier;
         modid = "railcraftretrogen",
         name = "Railcraft Retrogen",
         acceptableRemoteVersions = "*",
-        acceptedMinecraftVersions = "[1.10.2,1.11)",
+        acceptedMinecraftVersions = "*",
         dependencies = "required-after:railcraft"
 )
 @ParametersAreNonnullByDefault
